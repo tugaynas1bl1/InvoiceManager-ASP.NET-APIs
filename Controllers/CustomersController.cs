@@ -66,12 +66,20 @@ public class CustomersController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<ActionResult<bool>> DeleteCustomer(Guid id)
     {
-        var isDeleted = await _customerService.DeleteAsync(id);
+        try
+        {
+            var isDeleted = await _customerService.DeleteAsync(id);
 
-        if (!isDeleted)
-            return NotFound($"Customer with ID {id} NOT FOUND");
+            if (!isDeleted)
+                return NotFound($"Customer with ID {id} NOT FOUND");
 
-        return NoContent();
+            return NoContent();
+        }
+        catch
+        {
+            return BadRequest($"The customer you try to delete with ID {id} has got invoices. You can only delete customers to whom any invoices hasn't been sent");
+        }
+        
     }
 
     /// <summary>

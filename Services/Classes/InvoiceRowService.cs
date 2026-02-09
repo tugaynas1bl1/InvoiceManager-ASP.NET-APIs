@@ -77,6 +77,7 @@ public class InvoiceRowService : IInvoiceRowService
         var edittedRow = await _context
             .InvoiceRows
             .Include(ir => ir.Invoice)
+                .ThenInclude(i => i.Rows)
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (edittedRow is null) return null;

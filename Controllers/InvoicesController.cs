@@ -64,12 +64,18 @@ public class InvoicesController : ControllerBase
     [HttpDelete("{id}")]
     public async Task<ActionResult<bool>> DeleteInvoice(Guid id)
     {
-        var isDeleted = await _invoiceService.DeleteAsync(id);
+        try
+        {
+            var isDeleted = await _invoiceService.DeleteAsync(id);
 
-        if (!isDeleted)
-            return NotFound($"Invoice with ID {id} NOT FOUND");
+            if (!isDeleted)
+                return NotFound($"Invoice with ID {id} NOT FOUND");
 
-        return NoContent();
+            return NoContent();
+        }
+        catch {
+            return BadRequest($"The status of invoice with ID {id} should only be created for getting deleted");
+        }
     }
 
     /// <summary>
