@@ -28,6 +28,11 @@ public class InvoiceService : IInvoiceService
         _context.Invoices.Add(invoice);
         await _context.SaveChangesAsync();
 
+        var invoiceWithCustomer = await _context.Invoices
+        .Include(i => i.Customer)
+        .Include(i => i.Rows)
+        .FirstAsync(i => i.Id == invoice.Id);
+
         return _mapper.Map<InvoiceResponseDto>(invoice);
     }
 
@@ -51,6 +56,7 @@ public class InvoiceService : IInvoiceService
         var invoice = await _context
             .Invoices
             .Include(c => c.Customer)
+            .Where(i => i.Status == InvoiceStatus.Created)
             .FirstAsync(c => c.Id == id);
 
         if (invoice is null) return false;
@@ -106,11 +112,8 @@ public class InvoiceService : IInvoiceService
             .Include(c => c.Customer)
             .FirstOrDefaultAsync(c => c.Id == id);
 
-        
-
         invoice.Status = status;
         await _context.SaveChangesAsync();
-
         
         var item = invoice.DeletedAt != null ? null : _mapper.Map<InvoiceResponseDto>(invoice);
 
@@ -124,6 +127,7 @@ public class InvoiceService : IInvoiceService
         var query = _context
             .Invoices
             .Include(i => i.Customer)
+            .Where(i => i.DeletedAt == null)
             .AsQueryable();
 
         if (queryParams.CustomerId.HasValue)
@@ -153,7 +157,6 @@ public class InvoiceService : IInvoiceService
         var tasks = await query
                             .Skip(skip)
                             .Take(queryParams.Size)
-                            .Where(t => t.DeletedAt == null)
                             .ToListAsync();
 
         var taskDtos = _mapper.Map<IEnumerable<InvoiceResponseDto>>(tasks);

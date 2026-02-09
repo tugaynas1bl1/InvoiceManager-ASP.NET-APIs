@@ -31,6 +31,9 @@ public class InvoiceRowsController : ControllerBase
 
         var createdInvoiceRow = await _rowService.CreateAsync(createdRowRequest);
 
+        if (createdInvoiceRow is null)
+                return NotFound($"The invoice with this Invoice ID is non-existing or has been archived");
+
         return CreatedAtAction(nameof(GetInvoiceRowById), new { id = createdInvoiceRow.Id }, createdInvoiceRow);
     }
 

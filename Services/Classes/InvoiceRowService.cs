@@ -21,12 +21,29 @@ public class InvoiceRowService : IInvoiceRowService
 
     public async Task<InvoiceRowResponseDto> CreateAsync(CreateInvoiceRowDto createdRowRequest)
     {
+        var archived = await _context
+            .Invoices
+            .Include(i => i.Rows)
+            .Where(i => i.DeletedAt == null)
+            .FirstOrDefaultAsync(i => i.Id == createdRowRequest.InvoiceId);
+
+        if (archived is null) return null!;
+
         var row = _mapper.Map<InvoiceRow>(createdRowRequest);
 
         row.Sum = row.Amount * row.Quantity;
 
-        _context.InvoiceRows.Add(row);
-        await _context.SaveChangesAsync();
+        var invoice = await _context.Invoices
+                .Include(i => i.Rows)
+                .FirstOrDefaultAsync(i => i.Id == row.InvoiceId);
+
+        if (invoice != null)
+        {
+            invoice.Rows.Add(row);
+            invoice.TotalSum = invoice.Rows.Sum(r => r.Sum);
+        }
+
+        await _context.SaveChangesAsync();        
 
         return _mapper.Map<InvoiceRowResponseDto>(row);
     }
@@ -40,7 +57,17 @@ public class InvoiceRowService : IInvoiceRowService
 
         if (row is null) return false;
 
-        _context.InvoiceRows.Remove(row);
+        var invoice = await _context
+            .Invoices
+            .Include(i => i.Rows)
+            .FirstOrDefaultAsync(i => i.Id == row.InvoiceId);
+
+        if (invoice is not null)
+        {
+            invoice.Rows.Remove(row);
+            invoice.TotalSum = invoice.Rows.Sum(r => r.Sum);
+        }
+
         await _context.SaveChangesAsync();
         return true;
     }
@@ -56,6 +83,13 @@ public class InvoiceRowService : IInvoiceRowService
 
         _mapper.Map(edittedRowRequest, edittedRow);
         edittedRow.Sum = edittedRow.Amount * edittedRow.Quantity;
+
+        var invoice = edittedRow.Invoice;
+
+        if (invoice is not null)
+        {
+            invoice.TotalSum = invoice.Rows.Sum(r => r.Sum);
+        }
 
         await _context.SaveChangesAsync();
 

@@ -49,6 +49,7 @@ public class CustomerService : ICustomerService
         var customer = await _context
             .Customers
             .Include(c => c.Invoices)
+            .Where(c => c.Invoices.All(i => i.Status == InvoiceStatus.Created))
             .FirstAsync(c => c.Id == id);
 
         if (customer is null) return false;
@@ -104,6 +105,7 @@ public class CustomerService : ICustomerService
         var query = _context
             .Customers
             .Include(c => c.Invoices)
+            .Where(c => c.DeletedAt == null)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(queryParams.Search))
@@ -128,7 +130,6 @@ public class CustomerService : ICustomerService
         var tasks = await query
             .Skip(skip)
             .Take(queryParams.Size)
-            .Where(c => c.DeletedAt == null)
             .ToListAsync();
 
         var taskDtos = _mapper.Map<IEnumerable<CustomerResponseDto>>(tasks);

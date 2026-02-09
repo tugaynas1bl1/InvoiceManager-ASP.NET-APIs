@@ -34,14 +34,16 @@ public class MappingProfile: Profile
             .ForMember(
                     dest => dest.CustomerName,
                     opt => opt.MapFrom(src => src.Customer.Name))
-            .ForMember(dest => dest.TotalSum, opt => opt.MapFrom(src => src.Rows.Count()));
+            .ForMember(
+                    dest => dest.TotalSum, 
+                    opt => opt.MapFrom(src => src.TotalSum));
 
         CreateMap<CreateInvoiceDto, Invoice>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
             .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
             .ForMember(dest => dest.DeletedAt, opt => opt.Ignore())
-            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => InvoiceStatus.Created))
+            .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status))
             .ForMember(dest => dest.Customer, opt => opt.Ignore());
 
         CreateMap<EditInvoiceDto, Invoice>()
