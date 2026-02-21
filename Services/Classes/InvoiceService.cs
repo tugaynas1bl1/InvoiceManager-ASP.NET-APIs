@@ -104,7 +104,7 @@ public class InvoiceService : IInvoiceService
         var edittedInvoice = await _context
             .Invoices
             .Include(i => i.Customer)
-            .FirstOrDefaultAsync(i => i.Id == id && i.Customer.UserId == userId);
+            .FirstOrDefaultAsync(i => i.Id == id && i.Customer.UserId == userId && i.Status == InvoiceStatus.Created);
 
         if (edittedInvoice is null || edittedInvoice.DeletedAt is not null) 
             throw new NullReferenceException("Invoice you want to delete does not exist or not belong to this user");
