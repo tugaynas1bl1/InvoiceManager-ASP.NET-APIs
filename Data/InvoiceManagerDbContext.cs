@@ -1,9 +1,10 @@
 ﻿using ASP_NET_Final_Proj.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace ASP_NET_Final_Proj.Data;
 
-public class InvoiceManagerDbContext : DbContext
+public class InvoiceManagerDbContext : IdentityDbContext<User>
 {
     public InvoiceManagerDbContext(DbContextOptions dbContextOptions) : base(dbContextOptions)
     {
@@ -12,6 +13,7 @@ public class InvoiceManagerDbContext : DbContext
     public DbSet<Invoice> Invoices => Set<Invoice>();
     public DbSet<Customer> Customers => Set<Customer>();
     public DbSet<InvoiceRow> InvoiceRows => Set<InvoiceRow>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +36,10 @@ public class InvoiceManagerDbContext : DbContext
                     .HasMaxLength(20);
                 entity.Property(c => c.CreatedAt)
                     .IsRequired();
+                entity.HasOne(c => c.User)
+                    .WithMany(u => u.Customers)
+                    .HasForeignKey(e => e.UserId)
+                    .OnDelete(DeleteBehavior.Cascade);
             });
 
         // Invoice
@@ -83,6 +89,28 @@ public class InvoiceManagerDbContext : DbContext
                     .WithMany(i => i.Rows)
                     .HasForeignKey(e => e.InvoiceId)
                     .OnDelete(DeleteBehavior.Cascade);
+            });
+
+        // RefreshToken
+        modelBuilder.Entity<RefreshToken>(
+            entity =>
+            {
+                entity
+                    .HasKey(e => e.Id);
+
+                entity
+                    .HasIndex(e => e.JwtId)
+                    .IsUnique();
+
+                entity
+                    .Property(e => e.JwtId)
+                    .IsRequired()
+                    .HasMaxLength(64);
+
+                entity.Property(e => e.UserId)
+                    .IsRequired()
+                    .HasMaxLength(450);
+
             });
     }
 

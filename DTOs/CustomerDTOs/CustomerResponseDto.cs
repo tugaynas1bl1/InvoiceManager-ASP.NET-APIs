@@ -13,6 +13,12 @@ public class CustomerResponseDto
     public Guid Id { get; set; }
 
     /// <summary>
+    /// Unique identifier of the customer
+    /// </summary>
+    /// <example>tugaynasibli@gmail.com (Tugay Nasibli)</example>
+    public string CreatedBy { get; set; }
+
+    /// <summary>
     /// Full name of the customer
     /// </summary>
     /// <example>John Doe</example>

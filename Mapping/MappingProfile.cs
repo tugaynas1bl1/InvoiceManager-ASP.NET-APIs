@@ -11,7 +11,8 @@ public class MappingProfile: Profile
     public MappingProfile()
     {
         // Customer
-        CreateMap<Customer, CustomerResponseDto>();
+        CreateMap<Customer, CustomerResponseDto>()
+            .ForMember(dest => dest.CreatedBy, opt => opt.MapFrom(src => $"{src.User.Email} ({src.User.Name})"));
         CreateMap<CreateCustomerDto, Customer>()
             .ForMember(dest => dest.Id, opt => opt.Ignore())
             .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))

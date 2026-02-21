@@ -1,6 +1,7 @@
 ﻿using ASP_NET_10._TaskFlow_Pagination_Filtering_Ordering.DTOs;
 using ASP_NET_Final_Proj.Models;
 using ASP_NET_Final_Proj.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -25,6 +26,7 @@ public class InvoiceRowsController : ControllerBase
     /// <response code="201">The invoice row was successfully added</response>
     /// <response code="400">The request body is invalid</response>
     [HttpPost]
+    [Authorize]
     public async Task<ActionResult<InvoiceRowResponseDto>> AddInvoiceRow([FromBody] CreateInvoiceRowDto createdRowRequest)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -45,6 +47,7 @@ public class InvoiceRowsController : ControllerBase
     /// <response code="204">The invoice row was successfully deleted</response>
     /// <response code="404">Invoice row not found</response>
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<ActionResult<bool>> DeleteInvoiceRow(Guid id)
     {
         var isDeleted = await _rowService.DeleteAsync(id);
@@ -65,6 +68,7 @@ public class InvoiceRowsController : ControllerBase
     /// <response code="400">The request body is invalid</response>
     /// <response code="404">Invoice row not found</response>
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<ActionResult<InvoiceRowResponseDto>> EditInvoiceRow(Guid id, EditInvoiceRowDto edittedRowRequest)
     {
         if (!ModelState.IsValid)
@@ -84,6 +88,7 @@ public class InvoiceRowsController : ControllerBase
     /// <returns>A list of invoice rows</returns>
     /// <response code="200">Invoice rows retrieved successfully</response>
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<InvoiceRowResponseDto>>> GetAllInvoiceRows()
     {
         var rows = await _rowService.GetAllAsync();
@@ -99,6 +104,7 @@ public class InvoiceRowsController : ControllerBase
     /// <response code="200">Invoice row retrieved successfully</response>
     /// <response code="404">Invoice row not found</response>
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<ActionResult<InvoiceRowResponseDto>> GetInvoiceRowById(Guid id)
     {
         var invoice = await _rowService.GetByIdAsync(id);

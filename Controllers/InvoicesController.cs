@@ -3,6 +3,7 @@ using ASP_NET_Final_Proj.DTOs.InvoiceDTOs;
 using ASP_NET_Final_Proj.DTOs.QueryDTOs;
 using ASP_NET_Final_Proj.Models;
 using ASP_NET_Final_Proj.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -27,6 +28,7 @@ public class InvoicesController : ControllerBase
     /// <response code="201">The invoice was successfully added</response>
     /// <response code="400">The request body is invalid</response>
     [HttpPost]
+    [Authorize]
     public async Task<ActionResult<InvoiceResponseDto>> AddInvoice([FromBody] CreateInvoiceDto createdInvoiceRequest)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -44,6 +46,7 @@ public class InvoicesController : ControllerBase
     /// <response code="204">The invoice was successfully archived</response>
     /// <response code="404">Invoice not found</response>
     [HttpPatch("archive/{id}")]
+    [Authorize]
     public async Task<ActionResult<bool>> ArchiveInvoice(Guid id)
     {
         var isArchived = await _invoiceService.ArchiveAsync(id);
@@ -62,6 +65,7 @@ public class InvoicesController : ControllerBase
     /// <response code="204">The invoice was successfully deleted</response>
     /// <response code="404">Invoice not found</response>
     [HttpDelete("{id}")]
+    [Authorize]
     public async Task<ActionResult<bool>> DeleteInvoice(Guid id)
     {
         try
@@ -88,6 +92,7 @@ public class InvoicesController : ControllerBase
     /// <response code="400">The request body is invalid</response>
     /// <response code="404">Invoice not found</response>
     [HttpPut("{id}")]
+    [Authorize]
     public async Task<ActionResult<InvoiceResponseDto>> EditInvoice(Guid id, EditInvoiceDto edittedInvoiceRequest)
     {
         if (!ModelState.IsValid)
@@ -107,11 +112,20 @@ public class InvoicesController : ControllerBase
     /// <returns>A list of invoices</returns>
     /// <response code="200">Invoices retrieved successfully</response>
     [HttpGet("all")]
+    [Authorize]
     public async Task<ActionResult<IEnumerable<InvoiceResponseDto>>> GetAllInvoices()
     {
-        var invoices = await _invoiceService.GetAllAsync();
-        if (invoices is null) return BadRequest("No any invoices");
-        return Ok(invoices);
+        try
+        {
+            var invoices = await _invoiceService.GetAllAsync();
+
+            if (invoices is null) return BadRequest("No any invoices");
+            return Ok(invoices);
+        }
+        catch (Exception) 
+        {
+            return BadRequest("There is no any invoice");
+        }
     }
 
     /// <summary>
@@ -122,14 +136,22 @@ public class InvoicesController : ControllerBase
     /// <response code="200">Invoice retrieved successfully</response>
     /// <response code="404">Invoice not found</response>
     [HttpGet("{id}")]
+    [Authorize]
     public async Task<ActionResult<InvoiceResponseDto>> GetInvoiceById(Guid id)
     {
-        var invoice = await _invoiceService.GetByIdAsync(id);
+        try
+        {
+            var invoice = await _invoiceService.GetByIdAsync(id);
 
         if (invoice is null)
             return NotFound($"Invoice with ID {id} NOT FOUND");
 
-        return Ok(invoice);
+            return Ok(invoice);
+        }
+        catch
+        {
+            return BadRequest($"There is no any invoice with id {id}");
+        }
     }
 
     /// <summary>
@@ -141,17 +163,22 @@ public class InvoicesController : ControllerBase
     /// <response code="200">Invoice status updated successfully</response>
     /// <response code="404">Invoice not found</response>
     [HttpPatch("changestatus/{id}")]
+    [Authorize]
     public async Task<ActionResult<InvoiceResponseDto>> ChangeInvoiceStatus(Guid id, InvoiceStatus status)
     {
-        var invoice = await _invoiceService.ChangeStatusAsync(id, status);
-
-        if (invoice is null)
-            return NotFound($"Invoice with ID {id} NOT FOUND");
-
-        return Ok(invoice);
+        try
+        {
+            var invoice = await _invoiceService.ChangeStatusAsync(id, status);
+            return Ok(invoice);
+        }
+        catch
+        {
+            return BadRequest($"There is no any invoice with id {id}");
+        }
     }
 
     [HttpGet]
+    [Authorize]
     public async Task<ActionResult<PagedResult<InvoiceResponseDto>>> GetPaged([FromQuery] InvoiceQueryParams queryParams)
     {
         var result = await _invoiceService.GetPagedAsync(queryParams);

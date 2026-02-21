@@ -5,35 +5,55 @@ using ASP_NET_Final_Proj.DTOs.QueryDTOs;
 using ASP_NET_Final_Proj.Models;
 using ASP_NET_Final_Proj.Services.Interfaces;
 using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace ASP_NET_Final_Proj.Services.Classes;
+
 
 public class CustomerService : ICustomerService
 {
     private readonly InvoiceManagerDbContext _context;
     private readonly IMapper _mapper;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public CustomerService(InvoiceManagerDbContext context, IMapper mapper)
+    public CustomerService(InvoiceManagerDbContext context, IMapper mapper, IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
         _mapper = mapper;
+        _httpContextAccessor = httpContextAccessor;
     }
+
+
     public async Task<CustomerResponseDto> AddAsync(CreateCustomerDto createdCustomerRequest)
     {
         var customer = _mapper.Map<Customer>(createdCustomerRequest);
 
+        var userId = _httpContextAccessor.HttpContext?
+            .User
+            .FindFirstValue(ClaimTypes.NameIdentifier);
+
+        customer.UserId = userId!;
+
         _context.Customers.Add(customer);
         await _context.SaveChangesAsync();
 
-        return _mapper.Map<CustomerResponseDto>(customer);
+        var customerWithUser = await _context
+                                    .Customers
+                                    .Include(x => x.User)
+                                    .FirstOrDefaultAsync(c => c.Id == customer.Id);
+
+        return _mapper.Map<CustomerResponseDto>(customerWithUser);
     }
 
     public async Task<bool> ArchiveAsync(Guid id)
     {
+        var userId = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
         var customer = await _context
             .Customers
             .Include(c => c.Invoices)
+            .Where(c => c.UserId == userId)
             .FirstAsync(c => c.Id == id);
 
         if (customer is null || customer.DeletedAt is not null) return false;
@@ -46,10 +66,11 @@ public class CustomerService : ICustomerService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
+        var userId = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
         var customer = await _context
             .Customers
             .Include(c => c.Invoices)
-            .Where(c => c.Invoices.All(i => i.Status == InvoiceStatus.Created))
+            .Where(c => c.Invoices.All(i => i.Status == InvoiceStatus.Created) && c.UserId == userId)
             .FirstAsync(c => c.Id == id);
 
         if (customer is null) return false;
@@ -61,9 +82,12 @@ public class CustomerService : ICustomerService
 
     public async Task<CustomerResponseDto> EditAsync(Guid id, EditCustomerDto edittedCustomerRequest)
     {
+        var userId = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
         var edittedCustomer = await _context
             .Customers
             .Include(c => c.Invoices)
+            .Include(c => c.User)
+            .Where(c => c.UserId == userId)
             .FirstOrDefaultAsync(c  => c.Id == id);
 
         if (edittedCustomer is null || edittedCustomer.DeletedAt is not null) return null;
@@ -77,10 +101,12 @@ public class CustomerService : ICustomerService
 
     public async Task<IEnumerable<CustomerResponseDto>> GetAllAsync()
     {
+        var userId = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
         var customers = await _context
             .Customers
             .Include(c => c.Invoices)
-            .Where(c => c.DeletedAt == null)
+            .Include(c => c.User)
+            .Where(c => c.DeletedAt == null && c.UserId == userId)
             .ToListAsync();
 
         return customers.Select(c => _mapper.Map<CustomerResponseDto>(c));
@@ -88,9 +114,12 @@ public class CustomerService : ICustomerService
 
     public async Task<CustomerResponseDto> GetByIdAsync(Guid id)
     {
+        var userId = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
         var customer = await _context
             .Customers
             .Include(c => c.Invoices)
+            .Include(c => c.User)
+            .Where(c => c.UserId == userId)
             .FirstOrDefaultAsync(c => c.Id == id);
 
         if (customer.DeletedAt is not null) return null;
@@ -101,11 +130,13 @@ public class CustomerService : ICustomerService
     public async Task<PagedResult<CustomerResponseDto>> GetPagedAsync(CustomerQueryParams queryParams)
     {
         queryParams.Validate();
+        var userId = _httpContextAccessor.HttpContext?.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
         var query = _context
             .Customers
             .Include(c => c.Invoices)
-            .Where(c => c.DeletedAt == null)
+            .Include(c => c.User)
+            .Where(c => c.DeletedAt == null && c.UserId == userId)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(queryParams.Search))

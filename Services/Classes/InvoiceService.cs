@@ -7,6 +7,7 @@ using ASP_NET_Final_Proj.Models;
 using ASP_NET_Final_Proj.Services.Interfaces;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace ASP_NET_Final_Proj.Services.Classes;
 
@@ -14,16 +15,32 @@ public class InvoiceService : IInvoiceService
 {
     private readonly InvoiceManagerDbContext _context;
     private readonly IMapper _mapper;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
-    public InvoiceService(InvoiceManagerDbContext context, IMapper mapper)
+    public InvoiceService(InvoiceManagerDbContext context, IMapper mapper, IHttpContextAccessor httpContextAccessor)
     {
         _context = context;
         _mapper = mapper;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<InvoiceResponseDto> CreateAsync(CreateInvoiceDto createdInvoiceRequest)
     {
+
+        var userId = _httpContextAccessor.HttpContext?
+            .User
+            .FindFirstValue(ClaimTypes.NameIdentifier);
+
         var invoice = _mapper.Map<Invoice>(createdInvoiceRequest);
+
+        var customer = await _context.Customers
+            .Include(c => c.User)
+            .FirstOrDefaultAsync(c => c.Id == createdInvoiceRequest.CustomerId && c.UserId == userId);
+
+        if (customer is null)
+            throw new NullReferenceException("Customer couldn't be found or doesn't belong to this user");
+
+        invoice.Customer = customer;
 
         _context.Invoices.Add(invoice);
         await _context.SaveChangesAsync();
@@ -38,12 +55,20 @@ public class InvoiceService : IInvoiceService
 
     public async Task<bool> ArchiveAsync(Guid id)
     {
+        var userId = _httpContextAccessor.HttpContext?
+            .User
+            .FindFirstValue(ClaimTypes.NameIdentifier);
+
+        if (userId is null)
+            return false;
+
         var invoice = await _context
             .Invoices
-            .Include(c => c.Customer)
-            .FirstAsync(c => c.Id == id);
+            .Include(i => i.Customer)
+            .FirstAsync(i => i.Id == id && i.Customer.UserId == userId);
 
-        if (invoice is null || invoice.DeletedAt is not null) return false;
+        if (invoice is null || invoice.DeletedAt is not null) 
+            return false;
 
         invoice.DeletedAt = DateTime.UtcNow;
         await _context.SaveChangesAsync();
@@ -53,11 +78,15 @@ public class InvoiceService : IInvoiceService
 
     public async Task<bool> DeleteAsync(Guid id)
     {
+        var userId = _httpContextAccessor.HttpContext?
+            .User
+            .FindFirstValue(ClaimTypes.NameIdentifier);
+
         var invoice = await _context
             .Invoices
-            .Include(c => c.Customer)
+            .Include(i => i.Customer)
             .Where(i => i.Status == InvoiceStatus.Created)
-            .FirstAsync(c => c.Id == id);
+            .FirstAsync(i => i.Id == id && i.Customer.UserId == userId);
 
         if (invoice is null) return false;
 
@@ -68,12 +97,17 @@ public class InvoiceService : IInvoiceService
 
     public async Task<InvoiceResponseDto> EditAsync(Guid id, EditInvoiceDto edittedInvoiceRequest)
     {
+        var userId = _httpContextAccessor.HttpContext?
+            .User
+            .FindFirstValue(ClaimTypes.NameIdentifier);
+
         var edittedInvoice = await _context
             .Invoices
-            .Include(c => c.Customer)
-            .FirstOrDefaultAsync(c => c.Id == id);
+            .Include(i => i.Customer)
+            .FirstOrDefaultAsync(i => i.Id == id && i.Customer.UserId == userId);
 
-        if (edittedInvoice is null || edittedInvoice.DeletedAt is not null) return null;
+        if (edittedInvoice is null || edittedInvoice.DeletedAt is not null) 
+            throw new NullReferenceException("Invoice you want to delete does not exist or not belong to this user");
 
         _mapper.Map(edittedInvoiceRequest, edittedInvoice);
 
@@ -84,33 +118,52 @@ public class InvoiceService : IInvoiceService
 
     public async Task<IEnumerable<InvoiceResponseDto>> GetAllAsync()
     {
+        var userId = _httpContextAccessor.HttpContext?
+            .User
+            .FindFirstValue(ClaimTypes.NameIdentifier);
+
         var invoices = await _context
             .Invoices
-            .Include(c => c.Customer)
-            .Where(c => c.DeletedAt == null)
+            .Include(i => i.Customer)
+            .Where(i => i.DeletedAt == null && i.Customer.UserId == userId)
             .ToListAsync();
+
+        if (invoices.Count == 0)
+            throw new NullReferenceException();
 
         return invoices.Select(c => _mapper.Map<InvoiceResponseDto>(c));
     }
 
     public async Task<InvoiceResponseDto> GetByIdAsync(Guid id)
     {
+        var userId = _httpContextAccessor.HttpContext?
+            .User
+            .FindFirstValue(ClaimTypes.NameIdentifier);
+
         var invoice = await _context
             .Invoices
-            .Include(c => c.Customer)
-            .FirstOrDefaultAsync(c => c.Id == id);
+            .Include(i => i.Customer)
+            .FirstOrDefaultAsync(i => i.Id == id && i.Customer.UserId == userId);
 
-        if (invoice.DeletedAt is not null) return null;
+        if (invoice?.DeletedAt is not null || invoice is null) 
+                throw new NullReferenceException();
 
         return _mapper.Map<InvoiceResponseDto>(invoice);
     }
 
     public async Task<InvoiceResponseDto> ChangeStatusAsync(Guid id, InvoiceStatus status)
     {
+        var userId = _httpContextAccessor.HttpContext?
+            .User
+            .FindFirstValue(ClaimTypes.NameIdentifier);
+
         var invoice = await _context
             .Invoices
-            .Include(c => c.Customer)
-            .FirstOrDefaultAsync(c => c.Id == id);
+            .Include(i => i.Customer)
+            .FirstOrDefaultAsync(i => i.Id == id && i.Customer.UserId == userId);
+
+        if (invoice is null)
+            throw new NullReferenceException();
 
         invoice.Status = status;
         await _context.SaveChangesAsync();
@@ -124,14 +177,19 @@ public class InvoiceService : IInvoiceService
     {
         queryParams.Validate();
 
+        var userId = _httpContextAccessor.HttpContext?
+            .User
+            .FindFirstValue(ClaimTypes.NameIdentifier);
+
         var query = _context
             .Invoices
             .Include(i => i.Customer)
-            .Where(i => i.DeletedAt == null)
+            .Where(i => i.DeletedAt == null && i.Customer.UserId == userId)
             .AsQueryable();
 
         if (queryParams.CustomerId.HasValue)
             query = query.Where(i => i.CustomerId == queryParams.CustomerId.Value);
+
         if (!string.IsNullOrWhiteSpace(queryParams.Status))
         {
             if (Enum.TryParse<InvoiceStatus>(queryParams.Status, out var status))

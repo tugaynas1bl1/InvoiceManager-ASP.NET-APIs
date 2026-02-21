@@ -5,13 +5,16 @@ using ASP_NET_Final_Proj.DTOs.QueryDTOs;
 using ASP_NET_Final_Proj.Models;
 using ASP_NET_Final_Proj.Services.Interfaces;
 using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace ASP_NET_Final_Proj.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class CustomersController : ControllerBase
 {
     private readonly ICustomerService _customerService;
@@ -29,6 +32,7 @@ public class CustomersController : ControllerBase
     /// <response code="201">The customer was successfully added</response>
     /// <response code="400">The request body is invalid</response>
     [HttpPost]
+    [Authorize]
     public async Task<ActionResult<CustomerResponseDto>> AddCustomer([FromBody] CreateCustomerDto createdCustomerRequest)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -46,6 +50,8 @@ public class CustomersController : ControllerBase
     /// <response code="204">The customer was successfully archived</response>
     /// <response code="404">Customer not found</response>
     [HttpPatch("{id}")]
+    [Authorize]
+
     public async Task<ActionResult<bool>> ArchiveCustomer(Guid id)
     {
         var isArchived = await _customerService.ArchiveAsync(id);
@@ -64,6 +70,8 @@ public class CustomersController : ControllerBase
     /// <response code="204">The customer was successfully deleted</response>
     /// <response code="404">Customer not found</response>
     [HttpDelete("{id}")]
+    [Authorize]
+
     public async Task<ActionResult<bool>> DeleteCustomer(Guid id)
     {
         try
@@ -77,7 +85,7 @@ public class CustomersController : ControllerBase
         }
         catch
         {
-            return BadRequest($"The customer you try to delete with ID {id} has got invoices. You can only delete customers to whom any invoices hasn't been sent");
+            return BadRequest($"The customer you try to delete with ID {id} has got invoices or belongs to someone else. You can only delete customers to whom any invoices hasn't been sent yet or your own customers");
         }
         
     }
@@ -92,6 +100,8 @@ public class CustomersController : ControllerBase
     /// <response code="400">The request body is invalid</response>
     /// <response code="404">Customer not found</response>
     [HttpPut("{id}")]
+    [Authorize]
+
     public async Task<ActionResult<CustomerResponseDto>> EditCustomer(Guid id, EditCustomerDto edittedCustomerRequest)
     {
         if (!ModelState.IsValid)
@@ -111,6 +121,8 @@ public class CustomersController : ControllerBase
     /// <returns>A list of customers</returns>
     /// <response code="200">Customers retrieved successfully</response>
     [HttpGet("all")]
+    [Authorize]
+
     public async Task<ActionResult<IEnumerable<CustomerResponseDto>>> GetAllCustomers()
     {
         var customers = await _customerService.GetAllAsync();
@@ -126,6 +138,8 @@ public class CustomersController : ControllerBase
     /// <response code="200">Customer retrieved successfully</response>
     /// <response code="404">Customer not found</response>
     [HttpGet("{id}")]
+    [Authorize]
+
     public async Task<ActionResult<CustomerResponseDto>> GetCustomerById(Guid id)
     {
         var customer = await _customerService.GetByIdAsync(id);
@@ -137,7 +151,7 @@ public class CustomersController : ControllerBase
     }
 
     [HttpGet]
-
+    [Authorize]
     public async Task<ActionResult<PagedResult<CustomerResponseDto>>> GetPaged([FromQuery] CustomerQueryParams queryParams)
     {
         var result = await _customerService.GetPagedAsync(queryParams);
