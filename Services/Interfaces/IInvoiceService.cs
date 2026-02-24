@@ -15,4 +15,7 @@ public interface IInvoiceService
     Task<bool> DeleteAsync(Guid id);
     Task<bool> ArchiveAsync(Guid id);
     Task<PagedResult<InvoiceResponseDto>> GetPagedAsync(InvoiceQueryParams queryParams);
+
+    Task<byte[]> DownloadPdfAsync(Guid id);
+    Task<byte[]> DownloadDocxAsync(Guid id);
 }

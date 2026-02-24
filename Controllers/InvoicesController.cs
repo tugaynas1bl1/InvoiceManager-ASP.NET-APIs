@@ -184,4 +184,31 @@ public class InvoicesController : ControllerBase
         var result = await _invoiceService.GetPagedAsync(queryParams);
         return Ok(ApiResponse<PagedResult<InvoiceResponseDto>>.SuccessResponse(result));
     }
+
+    [HttpGet("{id}/download/pdf")]
+    [Authorize]
+    public async Task<IActionResult> DownloadPdf(Guid id)
+    {
+        var fileBytes = await _invoiceService.DownloadPdfAsync(id);
+
+        if (fileBytes == null)
+            return NotFound();
+
+        return File(fileBytes, "application/pdf", $"invoice_{id}.pdf");
+    }
+
+    [HttpGet("{id}/download/docx")]
+    [Authorize]
+    public async Task<IActionResult> DownloadDocx(Guid id)
+    {
+        var fileBytes = await _invoiceService.DownloadDocxAsync(id);
+
+        if (fileBytes == null)
+            return NotFound();
+
+        return File(fileBytes,
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            $"invoice_{id}.docx");
+    }
+
 }

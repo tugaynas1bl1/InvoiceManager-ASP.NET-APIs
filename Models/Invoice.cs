@@ -14,11 +14,4 @@ public class Invoice
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.Now;
     public DateTimeOffset? UpdatedAt { get; set; } = null;
     public DateTimeOffset? DeletedAt { get; set; } = null!;
-
-    
-
-    public void CalculateTotalSum()
-    {
-        
-    }
 }
